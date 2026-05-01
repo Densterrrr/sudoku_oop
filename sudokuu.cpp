@@ -3,7 +3,6 @@
 #include <string>
 using namespace std;
 
-// ── Cell Class ──────────────────────────────────────────────
 // This class handles a single cell in the sudoku grid.
 // Each cell knows its value, whether it's locked (fixed),
 // and keeps track of 4 hint arrays to help figure out
@@ -55,7 +54,6 @@ public:
     vector<int> getConsolidatedHints() { return consolidatedHints; }
 };
 
-// ── SudokuBoard Class ────────────────────────────────────────
 // This is the main brain of the puzzle. It holds the 9x9 grid
 // of Cell objects and handles all the logic — loading, updating
 // hints, validating answers, resetting, etc.
@@ -208,10 +206,8 @@ public:
     int getCellValue(int r, int c) { return grid[r][c].getValue(); }
 };
 
-// ── GameManager Class ────────────────────────────────────────
 // This handles everything the user sees and interacts with.
 // It talks to SudokuBoard to get things done, but keeps the
-// UI logic separate from the game logic.
 class GameManager {
 private:
     SudokuBoard board; // our one and only board instance
