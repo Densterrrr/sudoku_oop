@@ -1,6 +1,7 @@
 # sudoku_oop
 
 **Reactive Sudoku Puzzle Analyzer(C++)**
+
 A terminal-based Sudoku game written in C++ that features an interactive hint system to help guide players toward the correct answers.
 
 **How to Play**
@@ -28,9 +29,9 @@ Consolidated Hints — numbers that appear in 'all three' hints, meaning they ar
 
 **Class**
 
-Cell - Stores the value, fixed status, and hints for a single cell
-SudokuBoard - Manages the 9×9 grid, hint logic, validation, and reset
-GameManager - Handles all user input, display, and game flow
+1. Cell - Stores the value, fixed status, and hints for a single cell
+2. SudokuBoard - Manages the 9×9 grid, hint logic, validation, and reset
+3. GameManager - Handles all user input, display, and game flow
 
 ## Notes
 
