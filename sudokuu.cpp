@@ -230,9 +230,9 @@ public:
         for (int h : grid[row][col].getColHints()) cout << h << " ";
         cout << "\n  Box Hints        : ";
         for (int h : grid[row][col].getBoxHints()) cout << h << " ";
-        cout << "\n  Consolidated Hints (safe candidates): ";
+        cout << "\n  Consolidated Hints: ";
         vector<int> ch = grid[row][col].getConsolidatedHints();
-        if (ch.empty()) cout << "(none — cell may already be filled or fully constrained)";
+        if (ch.empty()) cout << "(none)"; // if consolidated hints is empty, show (none) instead of nothing
         else for (int h : ch) cout << h << " ";
         cout << endl;
     }
@@ -293,7 +293,8 @@ public:
         };
 
         board.loadPuzzle(puzzle);
-        cout << "Welcome! Here is your Sudoku puzzle:" << endl;
+        cout << "Welcome to our Sudoku puzzle!" << endl;
+        cout << "Here's the starting board:" << endl;
         displayBoard();
         menu();
     }
