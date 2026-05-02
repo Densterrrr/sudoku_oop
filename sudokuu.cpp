@@ -211,6 +211,15 @@ public:
                 reactiveUpdate(r, c);
     }
 
+    // checks if every cell on the board has a value
+    // used to detect when the puzzle is fully solved
+    bool isBoardComplete() {
+        for (int r = 0; r < 9; r++)
+            for (int c = 0; c < 9; c++)
+                if (grid[r][c].getValue() == 0) return false;
+        return true;
+    }
+
     // prints out all 4 hint arrays for whatever cell you pick
     // called from GameManager when the user asks for hints
     void printHints(int row, int col) {
@@ -272,15 +281,15 @@ public:
     void run() {
         // 0 means empty cell
         int puzzle[9][9] = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0},
-            {6, 0, 0, 1, 9, 5, 0, 0, 0},
-            {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3},
-            {4, 0, 0, 8, 0, 3, 0, 0, 1},
-            {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0},
-            {0, 0, 0, 4, 1, 9, 0, 0, 5},
-            {0, 0, 0, 0, 8, 0, 0, 7, 9}
+            {5, 3, 4, 0, 7, 8, 9, 1, 2},
+            {6, 7, 2, 1, 9, 5, 3, 4, 8},
+            {1, 9, 8, 3, 4, 2, 5, 6, 7},
+            {8, 5, 9, 7, 6, 1, 4, 2, 3},
+            {4, 2, 6, 8, 5, 3, 7, 9, 1},
+            {7, 1, 3, 9, 2, 4, 8, 5, 6},
+            {9, 6, 1, 5, 3, 7, 2, 8, 4},
+            {2, 8, 7, 4, 1, 9, 6, 3, 5},
+            {3, 4, 5, 2, 8, 6, 1, 7, 9}
         };
 
         board.loadPuzzle(puzzle);
@@ -339,12 +348,14 @@ public:
 
                 int answer;
                 cout << "Enter your answer (1-9) (0 to clear): ";
-                    if (!(cin >> answer) || answer < 0 || answer > 9) {
+                if (!(cin >> answer) || answer < 0 || answer > 9) {
                     cin.clear();
                     cin.ignore(1000, '\n');
-                    cout << "Invalid input! Enter a number from 1-9.\n";
+                    cout << "Invalid input! Enter a number from 0-9.\n";
                     continue;
                 }
+
+                // if 0 is entered, clear the cell and show the updated board
                 if (answer == 0) {
                     board.assignValue(row, col, 0);
                     cout << "Cell cleared!" << endl;
@@ -361,9 +372,16 @@ public:
                          << " is not in the consolidated hints for this cell." << endl;
                     cout << "Tip: Use option 2 to view the hints for this cell again." << endl;
                 } else {
+                    // answer is valid — assign it and show the updated board
                     board.assignValue(row, col, answer);
                     cout << "Answer accepted!" << endl;
                     displayBoard();
+
+                    // check if all cells are filled — if yes, show congratulations and exit
+                    if (board.isBoardComplete()) {
+                        cout << "Congratulations! Puzzle Solved!" << endl;
+                        return; // exit the menu loop and end the game
+                    }
                 }
             }
             else if (choice == 2) {
