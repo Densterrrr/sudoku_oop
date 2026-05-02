@@ -3,40 +3,39 @@
 #include <string>
 using namespace std;
 
-// This class handles a single cell in the sudoku grid.
-// Each cell knows its value, whether it's locked (fixed),
-// and keeps track of 4 hint arrays to help figure out
-// what numbers are still possible for that cell.
+// this class is for one cell in the sudoku board
+// it stores the number in it, if its locked or not,
+// and some arrays that help figure out what numbers can go there
+
 class Cell {
 private:
-    int value;        // the number in this cell (0 means empty)
-    bool isFixed;     // true if this cell came from the original puzzle
+    int value;     // whats in the cell, 0 means its empty
+    bool isFixed;  // true if the puzzle already put a number here (cant change it)
 
-    // these store what numbers are still "missing" from the
-    // cell's row, column, and 3x3 box respectively
+    // these track whats missing from the row, col, and box
     vector<int> rowHints, colHints, boxHints;
 
-    // the final list — only numbers that appear in ALL THREE above
+    // only the numbers that are in all 3 of the above
     vector<int> consolidatedHints;
 
 public:
-    // start everything empty/false by default
+    // default constructor, just set everything to empty/false
     Cell() : value(0), isFixed(false) {}
 
-    // basic getters and setters
+    // getters and setters for the value and isFixed properties
     int getValue()          { return value; }
     bool getIsFixed()       { return isFixed; }
     void setValue(int v)    { value = v; }
     void setIsFixed(bool f) { isFixed = f; }
 
-    // these get called by SudokuBoard whenever hints need updating
+    // SudokuBoard calls these when it recalculates hints
     void setRowHints(vector<int> h) { rowHints = h; }
     void setColHints(vector<int> h) { colHints = h; }
     void setBoxHints(vector<int> h) { boxHints = h; }
 
-    // finds the intersection of row, col, and box hints.
-    // a number only makes it to consolidatedHints if it's
-    // present in all three arrays — that's the real "safe" hint
+    // goes through rowHints and checks if each number also shows up
+    // in colHints and boxHints — if yes, add to consolidated
+    // basically its the intersection of all 3 arrays
     void refreshConsolidatedHints() {
         consolidatedHints.clear();
         for (int num : rowHints) {
@@ -47,23 +46,23 @@ public:
         }
     }
 
-    // getters for all 4 hint arrays
+    // just returning the hint arrays so other classes can use them
     vector<int> getRowHints()          { return rowHints; }
     vector<int> getColHints()          { return colHints; }
     vector<int> getBoxHints()          { return boxHints; }
     vector<int> getConsolidatedHints() { return consolidatedHints; }
 };
 
-// This is the main brain of the puzzle. It holds the 9x9 grid
-// of Cell objects and handles all the logic — loading, updating
-// hints, validating answers, resetting, etc.
+// this is the main class that runs the whole board
+// it has a 9x9 grid of Cell objects and handles all the logic
+// like loading the puzzle, updating hints, checking answers, resetting, etc.
 class SudokuBoard {
 private:
-    Cell grid[9][9];         // the board we're actively playing on
-    Cell originalGrid[9][9]; // backup copy so we can reset anytime
+    Cell grid[9][9];         // the actual board being played
+    Cell originalGrid[9][9]; // a copy of the starting state so we can reset
 
-    // scans the given row to find which numbers are already used,
-    // then sets the rowHints for all empty cells in that row
+    // looks through a row and finds which numbers are missing
+    // then sets those as the rowHints for all empty cells in that row
     void recalculateRowHints(int row) {
         vector<int> used, missing;
         for (int c = 0; c < 9; c++)
@@ -77,7 +76,7 @@ private:
             if (!grid[row][c].getValue()) grid[row][c].setRowHints(missing);
     }
 
-    // same idea but for a column
+    // same thing but for a column instead of a row
     void recalculateColumnHints(int col) {
         vector<int> used, missing;
         for (int r = 0; r < 9; r++)
@@ -91,8 +90,8 @@ private:
             if (!grid[r][col].getValue()) grid[r][col].setColHints(missing);
     }
 
-    // figures out which 3x3 box the cell belongs to,
-    // then updates box hints for all empty cells in that box
+    // finds what 3x3 box the cell is in, checks whats used in that box,
+    // then updates box hints for all the empty cells inside it
     void recalculateBoxHints(int row, int col) {
         int sr = (row/3)*3, sc = (col/3)*3; // top-left corner of the box
         vector<int> used, missing;
@@ -109,15 +108,15 @@ private:
                 if (!grid[r][c].getValue()) grid[r][c].setBoxHints(missing);
     }
 
-    // this is the "reactive engine" — when a cell changes,
-    // we only update the row, column, and box that were affected.
-    // no need to recalculate the whole board every time!
+    // when a cell gets updated, we only redo the hints for the
+    // row, column, and box that changed — not the whole board
+    // i think this is more efficient than redoing everything
     void reactiveUpdate(int row, int col) {
         recalculateRowHints(row);
         recalculateColumnHints(col);
         recalculateBoxHints(row, col);
 
-        // now refresh consolidated hints for all affected empty cells
+        // now we update the consolidated hints for all affected empty cells
         for (int c = 0; c < 9; c++)
             if (!grid[row][c].getValue()) grid[row][c].refreshConsolidatedHints();
         for (int r = 0; r < 9; r++)
@@ -129,23 +128,23 @@ private:
     }
 
 public:
-    // loads the puzzle into the grid, marks fixed cells,
-    // saves a backup, then triggers a full hint calculation
+    // puts the puzzle into the grid, marks which cells are fixed,
+    // saves a copy for resetting later, then calculates all the hints
     void loadPuzzle(int puzzle[9][9]) {
         for (int r = 0; r < 9; r++)
             for (int c = 0; c < 9; c++) {
                 grid[r][c].setValue(puzzle[r][c]);
                 grid[r][c].setIsFixed(puzzle[r][c] != 0);
-                originalGrid[r][c] = grid[r][c]; // save to backup
+                originalGrid[r][c] = grid[r][c]; // backup!
             }
-        // do a full board update so all hints are ready from the start
+        // run reactiveUpdate on every cell so hints are set from the start
         for (int r = 0; r < 9; r++)
             for (int c = 0; c < 9; c++)
                 reactiveUpdate(r, c);
     }
 
-    // converts a user address like "D4" or "4D" into row/col indices
-    // handles both formats so the user doesn't get a crash
+    // turns something like "D4" or "4D" into actual row and column numbers
+    // i made it handle both orders so users dont get errors either way
     pair<int,int> translateAddress(string address) {
         if (address.length() < 2) return {-1, -1};
         char a = toupper(address[0]), b = toupper(address[1]);
@@ -161,24 +160,48 @@ public:
         return {row, col};
     }
 
-    // checks if the answer the user gave is actually in the
-    // consolidated hints — if not, it's wrong
+    // checks if the answer the user gave is in the consolidated hints
+    // if consolidated hints is empty for some reason, fall back to
+    // just checking if its a duplicate — so the user isnt stuck forever
     bool validateAnswer(int row, int col, int answer) {
-        for (int h : grid[row][col].getConsolidatedHints())
-            if (h == answer) return true;
-        return false;
+        vector<int> hints = grid[row][col].getConsolidatedHints();
+        if (!hints.empty()) {
+            for (int h : hints)
+                if (h == answer) return true;
+            return false;
+        }
+        // fallback check — just make sure its not already somewhere it shouldnt be
+        return !isDuplicateInRowColBox(row, col, answer);
     }
 
-    // places the answer in the cell and immediately triggers
-    // reactiveUpdate so neighboring cells get updated hints
+    // puts the answer in the cell (only if its not a fixed cell)
+    // then calls reactiveUpdate so nearby cells get updated hints
     void assignValue(int row, int col, int answer) {
         if (!grid[row][col].getIsFixed()) {
             grid[row][col].setValue(answer);
-            reactiveUpdate(row, col); // only updates what's affected
+            reactiveUpdate(row, col);
         }
     }
 
-    // restores the board from the backup and recalculates everything
+    // checks if the number already exists somewhere it shouldnt be
+    // skips the cell itself so it doesnt accidentally flag itself
+    bool isDuplicateInRowColBox(int row, int col, int answer) {
+        // check the row
+        for (int c = 0; c < 9; c++)
+            if (c != col && grid[row][c].getValue() == answer) return true;
+        // check the column
+        for (int r = 0; r < 9; r++)
+            if (r != row && grid[r][col].getValue() == answer) return true;
+        // check the 3x3 box
+        int sr = (row/3)*3, sc = (col/3)*3;
+        for (int r = sr; r < sr+3; r++)
+            for (int c = sc; c < sc+3; c++)
+                if (!(r == row && c == col) && grid[r][c].getValue() == answer) return true;
+        return false;
+    }
+
+    // resets the board back to how it was at the start
+    // copies from the backup and redoes all the hints
     void resetPuzzle() {
         for (int r = 0; r < 9; r++)
             for (int c = 0; c < 9; c++)
@@ -188,31 +211,35 @@ public:
                 reactiveUpdate(r, c);
     }
 
-    // prints all 4 hint arrays for a specific cell
-    // this gets called from GameManager's printHints method
+    // prints out all 4 hint arrays for whatever cell you pick
+    // called from GameManager when the user asks for hints
     void printHints(int row, int col) {
-        cout << "Hints for cell " << (char)('A'+row) << (col+1) << ":" << endl;
-        cout << "Column Hints: ";
-        for (int h : grid[row][col].getColHints()) cout << h << " ";
-        cout << "\nRow Hints: ";
+        cout << "\nHints for cell " << (char)('A'+row) << (col+1) << ":" << endl;
+        cout << "  Row Hints        : ";
         for (int h : grid[row][col].getRowHints()) cout << h << " ";
-        cout << "\nBox Hints: ";
+        cout << "\n  Column Hints     : ";
+        for (int h : grid[row][col].getColHints()) cout << h << " ";
+        cout << "\n  Box Hints        : ";
         for (int h : grid[row][col].getBoxHints()) cout << h << " ";
-        cout << "\nConsolidated Hints: ";
-        for (int h : grid[row][col].getConsolidatedHints()) cout << h << " ";
+        cout << "\n  Consolidated Hints (safe candidates): ";
+        vector<int> ch = grid[row][col].getConsolidatedHints();
+        if (ch.empty()) cout << "(none — cell may already be filled or fully constrained)";
+        else for (int h : ch) cout << h << " ";
         cout << endl;
     }
 
-    int getCellValue(int r, int c) { return grid[r][c].getValue(); }
+    int getCellValue(int r, int c)    { return grid[r][c].getValue(); }
+    bool getCellIsFixed(int r, int c) { return grid[r][c].getIsFixed(); }
 };
 
-// This handles everything the user sees and interacts with.
-// It talks to SudokuBoard to get things done, but keeps the
+// this class handles everything the user sees and interacts with
+// it basically separates the display/input stuff from the board logic
+// which i think is what the teacher meant by separation of concerns
 class GameManager {
 private:
-    SudokuBoard board; // our one and only board instance
+    SudokuBoard board; // the board we're playing on
 
-    // simple yes/no prompt used before important actions
+    // just a small helper to ask the user yes or no
     bool confirm(string message) {
         string r;
         cout << message << " (y/n): ";
@@ -220,79 +247,9 @@ private:
         return (r == "y" || r == "Y");
     }
 
-    // reads one row from the user and validates it on the spot.
-    // won't move on until the row has valid numbers with no duplicates
-    void readRow(int puzzle[9][9], int r) {
-        bool valid = false;
-        while (!valid) {
-            cout << "Row " << (char)('A'+r) << ": ";
-            for (int c = 0; c < 9; c++) cin >> puzzle[r][c];
-
-            bool ok = true;
-            // check that all values are between 0-9
-            for (int c = 0; c < 9 && ok; c++)
-                if (puzzle[r][c] < 0 || puzzle[r][c] > 9) {
-                    cout << "Invalid number! Only 0-9 allowed. Re-enter.\n";
-                    ok = false;
-                }
-            if (!ok) continue;
-
-            // check for duplicates within the same row
-            for (int c = 0; c < 9 && ok; c++) {
-                if (!puzzle[r][c]) continue;
-                for (int k = c+1; k < 9 && ok; k++)
-                    if (puzzle[r][c] == puzzle[r][k]) {
-                        cout << "Duplicate " << puzzle[r][c] << " in row "
-                             << (char)('A'+r) << "! Re-enter.\n";
-                        ok = false;
-                    }
-            }
-            valid = ok;
-        }
-    }
-
-    // after all rows are entered, check the whole board for
-    // column and box duplicates. if found, ask the user to fix them
-    bool validateBoard(int puzzle[9][9]) {
-        // check each column for duplicates
-        for (int c = 0; c < 9; c++) {
-            for (int r1 = 0; r1 < 9; r1++) {
-                if (!puzzle[r1][c]) continue;
-                for (int r2 = r1+1; r2 < 9; r2++) {
-                    if (puzzle[r1][c] == puzzle[r2][c]) {
-                        cout << "Duplicate " << puzzle[r1][c]
-                             << " in column " << (c+1) << "! Re-enter affected rows.\n";
-                        readRow(puzzle, r1);
-                        readRow(puzzle, r2);
-                        return false; // restart validation from the top
-                    }
-                }
-            }
-        }
-        // check each 3x3 box for duplicates
-        for (int br = 0; br < 3; br++) {
-            for (int bc = 0; bc < 3; bc++) {
-                vector<pair<int,int>> cells;
-                for (int r = br*3; r < br*3+3; r++)
-                    for (int c = bc*3; c < bc*3+3; c++)
-                        if (puzzle[r][c]) cells.push_back({r, c});
-                for (int i = 0; i < (int)cells.size(); i++)
-                    for (int j = i+1; j < (int)cells.size(); j++)
-                        if (puzzle[cells[i].first][cells[i].second] ==
-                            puzzle[cells[j].first][cells[j].second]) {
-                            cout << "Duplicate " << puzzle[cells[i].first][cells[i].second]
-                                 << " in box (" << (br+1) << "," << (bc+1) << ")! Re-enter affected rows.\n";
-                            readRow(puzzle, cells[i].first);
-                            readRow(puzzle, cells[j].first);
-                            return false;
-                        }
-            }
-        }
-        return true; // all good, no conflicts found
-    }
-
 public:
-    // draws the current state of the board to the console
+    // prints the board to the terminal
+    // shows dots for empty cells and actual numbers for filled ones
     void displayBoard() {
         cout << "\n     1 2 3   4 5 6   7 8 9" << endl;
         cout << "   +-------+-------+-------+" << endl;
@@ -300,7 +257,7 @@ public:
             cout << " " << (char)('A'+r) << " |";
             for (int c = 0; c < 9; c++) {
                 int val = board.getCellValue(r, c);
-                cout << (val ? " " + to_string(val) : " ."); // dot for empty
+                cout << (val ? " " + to_string(val) : " ."); // dot if empty
                 if (c == 2 || c == 5 || c == 8) cout << " |";
             }
             cout << " " << (char)('A'+r) << endl;
@@ -311,27 +268,33 @@ public:
         cout << "     1 2 3   4 5 6   7 8 9\n" << endl;
     }
 
-    // entry point — asks the user to input the puzzle,
-    // validates it, loads it, then starts the menu
+    // this is where the game starts
     void run() {
-        int puzzle[9][9];
-        cout << "Enter the Sudoku puzzle row by row." << endl;
-        cout << "Use 0 for empty cells, separate numbers with spaces.\n" << endl;
-
-        for (int r = 0; r < 9; r++) readRow(puzzle, r);
-        while (!validateBoard(puzzle)); // keep re-checking until no conflicts
+        // 0 means empty cell
+        int puzzle[9][9] = {
+            {5, 3, 0, 0, 7, 0, 0, 0, 0},
+            {6, 0, 0, 1, 9, 5, 0, 0, 0},
+            {0, 9, 8, 0, 0, 0, 0, 6, 0},
+            {8, 0, 0, 0, 6, 0, 0, 0, 3},
+            {4, 0, 0, 8, 0, 3, 0, 0, 1},
+            {7, 0, 0, 0, 2, 0, 0, 0, 6},
+            {0, 6, 0, 0, 0, 0, 2, 8, 0},
+            {0, 0, 0, 4, 1, 9, 0, 0, 5},
+            {0, 0, 0, 0, 8, 0, 0, 7, 9}
+        };
 
         board.loadPuzzle(puzzle);
+        cout << "Welcome! Here is your Sudoku puzzle:" << endl;
         displayBoard();
         menu();
     }
 
-    // the main game loop — shows options and handles user choices
+    // the main loop — keeps showing the menu until the user exits
     void menu() {
         string input;
         int choice;
 
-        // ask which cell to start with and show its hints
+        // lambda that keeps asking until we get a valid cell address
         auto readAddress = [&]() {
             pair<int,int> coords = {-1, -1};
             while (coords.first == -1) {
@@ -344,11 +307,13 @@ public:
             return coords;
         };
 
+        // ask the user to pick a starting cell and show its hints
         auto coords = readAddress();
         int row = coords.first, col = coords.second;
         board.printHints(row, col);
 
         do {
+            // show the 4 menu options
             cout << "\n--- MENU ---\n"
                  << "1. Provide an answer for this cell\n"
                  << "2. Check another cell\n"
@@ -356,7 +321,7 @@ public:
                  << "4. Exit\n"
                  << "Choice: ";
 
-            // fix: if cin fails (e.g. user types "g1"), clear and skip
+            // if they type something weird, clear cin and try again
             if (!(cin >> choice)) {
                 cin.clear();
                 cin.ignore(1000, '\n');
@@ -366,40 +331,63 @@ public:
             }
 
             if (choice == 1) {
+                // cant fill a cell that came with the puzzle
+                if (board.getCellIsFixed(row, col)) {
+                    cout << "That cell is fixed and cannot be changed!" << endl;
+                    continue;
+                }
+
                 int answer;
-                cout << "Enter your answer: ";
-                if (!(cin >> answer) || answer < 1 || answer > 9) {
+                cout << "Enter your answer (1-9) (0 to clear): ";
+                    if (!(cin >> answer) || answer < 0 || answer > 9) {
                     cin.clear();
                     cin.ignore(1000, '\n');
                     cout << "Invalid input! Enter a number from 1-9.\n";
                     continue;
                 }
-                if (board.validateAnswer(row, col, answer)) {
-                    // double-check before placing the answer
-                    if (confirm("Are you sure you want to place " + to_string(answer) +
-                                " in cell " + (char)('A'+row) + to_string(col+1) + "?")) {
-                        board.assignValue(row, col, answer);
-                        cout << "Answer accepted!" << endl;
-                        displayBoard();
-                    } else cout << "Action cancelled." << endl;
-                } else cout << "Invalid answer! Not in consolidated hints." << endl;
+                if (answer == 0) {
+                    board.assignValue(row, col, 0);
+                    cout << "Cell cleared!" << endl;
+                    displayBoard();
+                    continue;
+                }
+
+                // first check if its already used nearby, then check consolidated hints
+                if (board.isDuplicateInRowColBox(row, col, answer)) {
+                    cout << "Invalid! " << answer
+                         << " already exists in the same row, column, or box." << endl;
+                } else if (!board.validateAnswer(row, col, answer)) {
+                    cout << "Invalid! " << answer
+                         << " is not in the consolidated hints for this cell." << endl;
+                    cout << "Tip: Use option 2 to view the hints for this cell again." << endl;
+                } else {
+                    board.assignValue(row, col, answer);
+                    cout << "Answer accepted!" << endl;
+                    displayBoard();
+                }
             }
             else if (choice == 2) {
-                if (confirm("Do you want to check another cell?")) {
-                    coords = readAddress();
-                    row = coords.first; col = coords.second;
-                    board.printHints(row, col);
-                } else cout << "Action cancelled." << endl;
+                // show the board first so the user knows what theyre looking at
+                displayBoard();
+                coords = readAddress();
+                row = coords.first; col = coords.second;
+                board.printHints(row, col);
             }
             else if (choice == 3) {
-                if (confirm("Do you really want to reset? All progress will be lost")) {
+                // reset everything back to how it was at the start
+                if (confirm("Reset the puzzle? All your progress will be lost.")) {
                     board.resetPuzzle();
                     cout << "Puzzle reset!" << endl;
                     displayBoard();
-                } else cout << "Reset cancelled." << endl;
+                    // ask them to pick a cell again since we wiped the board
+                    coords = readAddress();
+                    row = coords.first; col = coords.second;
+                    board.printHints(row, col);
+                } else {
+                    cout << "Reset cancelled." << endl;
+                }
             }
             else if (choice == 4) {
-                // confirm before quitting
                 if (!confirm("Are you sure you want to exit?")) choice = 0;
                 else cout << "Goodbye!" << endl;
             }
