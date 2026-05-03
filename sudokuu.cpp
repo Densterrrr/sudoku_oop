@@ -296,11 +296,11 @@ public:
         cout << "Welcome to our Sudoku puzzle!" << endl;
         cout << "Here's the starting board:" << endl;
         displayBoard();
-        menu();
+        displayMenu();
     }
 
     // the main loop — keeps showing the menu until the user exits
-    void menu() {
+    void displayMenu() {
         string input;
         int choice;
 
